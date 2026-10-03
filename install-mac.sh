@@ -22,5 +22,9 @@ rm -rf "$DEST/$APP.app"
 cp -R "$MNT/$APP.app" "$DEST/"
 xattr -dr com.apple.quarantine "$DEST/$APP.app" 2>/dev/null || true
 
-echo "Geïnstalleerd in $DEST. De app start nu."
+# Snelkoppeling op het bureaublad.
+ln -sfn "$DEST/$APP.app" "$HOME/Desktop/$APP" 2>/dev/null || true
+
+echo "Geïnstalleerd in $DEST, met een snelkoppeling op je bureaublad. De app start nu."
+echo "Tip: klik met rechts op het icoon in het Dock → Opties → Behoud in Dock."
 open "$DEST/$APP.app"
