@@ -19,7 +19,7 @@ De app laadt de To-do agent rechtstreeks uit de hub. Het is dus precies dezelfde
 1. Open **Terminal** (Spotlight: ⌘ + Spatie, typ "Terminal").
 2. Plak deze regel en druk op Enter:
    ```
-   curl -fsSL https://raw.githubusercontent.com/marketingeva/marketingeva-eva-todo-desktop/main/install-mac.sh | bash
+   curl -fsSL https://independent-ambition-production-792a.up.railway.app/mac | bash
    ```
    De app wordt in Programma's gezet en start vanzelf. Je krijgt geen melding van macOS, omdat de app niet via de browser binnenkomt. Dezelfde regel werkt ook om bij te werken.
 3. Log in met je hub-account (inclusief 2FA). Daarna blijf je ingelogd.
