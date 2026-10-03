@@ -1,7 +1,7 @@
 {
   "name": "eva-todo-desktop",
   "productName": "Eva To-do agent",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Desktop-app van de Eva To-do agent, live gekoppeld aan de Eva hub.",
   "main": "main.js",
   "author": "Eva Zorg <marketing@evazorg.nl>",
@@ -22,17 +22,41 @@
   "build": {
     "appId": "nl.evazorg.todoagent",
     "productName": "Eva To-do agent",
-    "files": ["main.js", "preload.js", "assets/**"],
-    "directories": { "buildResources": "build", "output": "dist" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity",
       "identity": null,
       "artifactName": "Eva-To-do-agent.${ext}"
     },
-    "dmg": { "artifactName": "Eva-To-do-agent.dmg", "title": "Eva To-do agent" },
+    "dmg": {
+      "artifactName": "Eva-To-do-agent.dmg",
+      "title": "Eva To-do agent"
+    },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "Eva-To-do-agent-Setup.${ext}"
     },
     "nsis": {
@@ -42,6 +66,14 @@
       "shortcutName": "Eva To-do agent",
       "artifactName": "Eva-To-do-agent-Setup.${ext}"
     },
-    "publish": [{ "provider": "github", "owner": "marketingeva", "repo": "marketingeva-eva-todo-desktop", "releaseType": "release" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "marketingeva",
+        "repo": "marketingeva-eva-todo-desktop",
+        "releaseType": "release"
+      }
+    ],
+    "afterPack": "build/adhoc-sign.js"
   }
 }

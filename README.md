@@ -15,10 +15,21 @@ De app laadt de To-do agent rechtstreeks uit de hub. Het is dus precies dezelfde
 
 ## Installeren
 
-**Mac**
-1. Open het `.dmg`-bestand en sleep **Eva To-do agent** naar **Programma's**.
-2. De eerste keer: open de app. Krijg je de melding dat de ontwikkelaar niet geverifieerd is, ga dan naar **Systeeminstellingen → Privacy en beveiliging**, scroll naar beneden en klik op **Toch openen**.
+**Mac (aanrader: één regel in Terminal)**
+1. Open **Terminal** (Spotlight: ⌘ + Spatie, typ "Terminal").
+2. Plak deze regel en druk op Enter:
+   ```
+   curl -fsSL https://raw.githubusercontent.com/marketingeva/marketingeva-eva-todo-desktop/main/install-mac.sh | bash
+   ```
+   De app wordt in Programma's gezet en start vanzelf. Je krijgt geen melding van macOS, omdat de app niet via de browser binnenkomt. Dezelfde regel werkt ook om bij te werken.
 3. Log in met je hub-account (inclusief 2FA). Daarna blijf je ingelogd.
+
+**Mac (via de download)**
+1. Open het `.dmg`-bestand en sleep **Eva To-do agent** naar **Programma's**.
+2. Open de app. macOS zegt dan "Eva To-do agent kan niet worden geopend" (alleen een knop **Gereed**). Klik op Gereed.
+3. Ga naar **Systeeminstellingen → Privacy en beveiliging**, scroll naar beneden en klik bij "Eva To-do agent werd geblokkeerd" op **Open toch**. Bevestig met je wachtwoord of Touch ID. Daarna opent hij gewoon.
+
+Waarom die melding? De app is nog niet door Apple gecertificeerd (daarvoor is een Apple Developer-account van $99 per jaar nodig). Met dat account kan de build hem automatisch laten ondertekenen en notariseren; dan verdwijnt de melding helemaal.
 
 **Windows**
 1. Open `Eva-To-do-agent-Setup.exe`.
