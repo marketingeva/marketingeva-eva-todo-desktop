@@ -42,6 +42,6 @@
       "shortcutName": "Eva To-do agent",
       "artifactName": "Eva-To-do-agent-Setup.${ext}"
     },
-    "publish": [{ "provider": "github", "owner": "marketingeva", "repo": "eva-todo-desktop", "releaseType": "release" }]
+    "publish": [{ "provider": "github", "owner": "marketingeva", "repo": "marketingeva-eva-todo-desktop", "releaseType": "release" }]
   }
 }

@@ -10,8 +10,8 @@ De app laadt de To-do agent rechtstreeks uit de hub. Het is dus precies dezelfde
 
 ## Downloaden
 
-- **Mac:** [Eva-To-do-agent.dmg](https://github.com/marketingeva/eva-todo-desktop/releases/latest/download/Eva-To-do-agent.dmg)
-- **Windows:** [Eva-To-do-agent-Setup.exe](https://github.com/marketingeva/eva-todo-desktop/releases/latest/download/Eva-To-do-agent-Setup.exe)
+- **Mac:** [Eva-To-do-agent.dmg](https://github.com/marketingeva/marketingeva-eva-todo-desktop/releases/latest/download/Eva-To-do-agent.dmg)
+- **Windows:** [Eva-To-do-agent-Setup.exe](https://github.com/marketingeva/marketingeva-eva-todo-desktop/releases/latest/download/Eva-To-do-agent-Setup.exe)
 
 ## Installeren
 
