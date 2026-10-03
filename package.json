@@ -1,0 +1,47 @@
+{
+  "name": "eva-todo-desktop",
+  "productName": "Eva To-do agent",
+  "version": "1.0.0",
+  "description": "Desktop-app van de Eva To-do agent, live gekoppeld aan de Eva hub.",
+  "main": "main.js",
+  "author": "Eva Zorg <marketing@evazorg.nl>",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check main.js && node --check preload.js",
+    "dist": "electron-builder --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "nl.evazorg.todoagent",
+    "productName": "Eva To-do agent",
+    "files": ["main.js", "preload.js", "assets/**"],
+    "directories": { "buildResources": "build", "output": "dist" },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "category": "public.app-category.productivity",
+      "identity": null,
+      "artifactName": "Eva-To-do-agent.${ext}"
+    },
+    "dmg": { "artifactName": "Eva-To-do-agent.dmg", "title": "Eva To-do agent" },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "artifactName": "Eva-To-do-agent-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Eva To-do agent",
+      "artifactName": "Eva-To-do-agent-Setup.${ext}"
+    },
+    "publish": [{ "provider": "github", "owner": "marketingeva", "repo": "eva-todo-desktop", "releaseType": "release" }]
+  }
+}
