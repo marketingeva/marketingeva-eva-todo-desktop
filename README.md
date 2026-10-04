@@ -4,8 +4,15 @@ De desktop-app van de **To-do agent** uit de Eva hub, voor Mac en Windows.
 
 De app laadt de To-do agent rechtstreeks uit de hub. Het is dus precies dezelfde app met dezelfde data, en alles loopt live synchroon met de hub. Extra in de desktop-app:
 
-- **Sneltoets die overal werkt**, ook in andere programma's: standaard `Ctrl/⌘ + Shift + Spatie` opent "snel toevoegen".
-- **Icoon in de menubalk (Mac) of taakbalk (Windows)** met: openen, snel toevoegen, sneltoets kiezen, starten bij inloggen.
+- **Sneltoetsen die overal werken**, ook in andere programma's, net als bij Todoist:
+  - *Taak snel toevoegen*: standaard `Ctrl/⌘ + Shift + Spatie`
+  - *To-do agent tonen/verbergen*: standaard `Ctrl/⌘ + Shift + O`
+  - Zelf in te stellen in de app: **Instellingen → Desktop** (ook menubalk, Dock en starten bij inloggen).
+- **Icoon in de menubalk (Mac) of taakbalk (Windows)** met: openen, snel toevoegen en instellingen.
+
+## Bijwerken
+- **Mac:** plak de installatieregel opnieuw in Terminal (zie hieronder). De oude versie wordt overschreven; je blijft ingelogd.
+- **Windows:** werkt zichzelf bij; sluit de app en open hem opnieuw.
 - Eigen venster, los van je browser.
 
 ## Downloaden

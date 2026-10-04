@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld('evaDesktop', {
   openInBrowser: (url) => ipcRenderer.send('eva:open-browser', String(url)),
   shortcut: info.shortcut,
   version: info.version,
+  // Vanaf 1.1: Instellingen → Desktop in de hub (sneltoetsen, menubalk, Dock, opstarten).
+  capabilities: ['settings'],
+  getSettings: () => ipcRenderer.sendSync('eva:get-settings'),
+  setSettings: (changes) => ipcRenderer.invoke('eva:set-settings', changes),
 })
 
 // Hoofdvenster verversen na snel toevoegen in het kleine venster.

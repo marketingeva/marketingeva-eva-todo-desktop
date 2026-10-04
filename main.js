@@ -3,8 +3,9 @@
 // De app laadt de To-do agent rechtstreeks uit de Eva hub. Daardoor is het
 // precies dezelfde app, met dezelfde data, en loopt alles live synchroon:
 // een taak die je hier afvinkt is ook in de hub afgevinkt, en andersom.
-// Extra ten opzichte van de browser: een sneltoets die overal op je computer
-// werkt (ook in andere programma's) en een icoon in de menubalk/taakbalk.
+// Extra ten opzichte van de browser: sneltoetsen die overal op je computer werken
+// (snel toevoegen en app tonen/verbergen, zelf in te stellen in Instellingen → Desktop)
+// en een icoon in de menubalk/taakbalk.
 
 const { app, BrowserWindow, Tray, Menu, globalShortcut, shell, ipcMain, nativeImage, session, dialog, screen } = require('electron')
 const path = require('path')
@@ -14,28 +15,30 @@ const HUB_URL = (process.env.EVA_HUB_URL || 'https://independent-ambition-produc
 const PARTITION = 'persist:eva'
 const IS_MAC = process.platform === 'darwin'
 
-const SHORTCUTS = [
-  { accelerator: 'CommandOrControl+Shift+Space', label: IS_MAC ? '⌘ + Shift + Spatie' : 'Ctrl + Shift + Spatie' },
-  { accelerator: 'CommandOrControl+Alt+T', label: IS_MAC ? '⌘ + Option + T' : 'Ctrl + Alt + T' },
-  { accelerator: 'CommandOrControl+Shift+K', label: IS_MAC ? '⌘ + Shift + K' : 'Ctrl + Shift + K' },
-  { accelerator: 'Alt+Space', label: IS_MAC ? 'Option + Spatie' : 'Alt + Spatie' },
-]
+const DEFAULTS = {
+  quickShortcut: 'CommandOrControl+Shift+Space',  // Taak snel toevoegen
+  toggleShortcut: 'CommandOrControl+Shift+O',     // To-do agent tonen/verbergen
+  showTray: true,
+  showDock: true,
+}
 
 let mainWindow = null
 let quickWindow = null
 let tray = null
 let quitting = false
 
-// ── Instellingen (sneltoets, starten bij inloggen) ─────────────────────────
+// ── Instellingen (sneltoetsen, menubalk, Dock) ─────────────────────────────
+// In te stellen in de app zelf: To-do agent → Instellingen → Desktop.
 
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json')
 
 function readSettings() {
-  try {
-    return { shortcut: SHORTCUTS[0].accelerator, ...JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) }
-  } catch {
-    return { shortcut: SHORTCUTS[0].accelerator }
-  }
+  let stored = {}
+  try { stored = JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) } catch { /* eerste start */ }
+  // Versie 1.0 bewaarde één sneltoets onder "shortcut".
+  if (stored.shortcut && stored.quickShortcut === undefined) stored.quickShortcut = stored.shortcut
+  delete stored.shortcut
+  return { ...DEFAULTS, ...stored }
 }
 
 function writeSettings(changes) {
@@ -44,8 +47,26 @@ function writeSettings(changes) {
   return next
 }
 
-const shortcutLabel = (accelerator) =>
-  (SHORTCUTS.find(s => s.accelerator === accelerator) || { label: accelerator }).label
+/** "CommandOrControl+Shift+Space" → "⌘ + ⇧ + Spatie" (Mac) of "Ctrl + Shift + Spatie". */
+function shortcutLabel(accelerator) {
+  if (!accelerator) return 'geen'
+  const names = IS_MAC
+    ? { CommandOrControl: '⌘', Command: '⌘', Control: '⌃', Alt: '⌥', Option: '⌥', Shift: '⇧', Space: 'Spatie' }
+    : { CommandOrControl: 'Ctrl', Control: 'Ctrl', Alt: 'Alt', Shift: 'Shift', Space: 'Spatie' }
+  return accelerator.split('+').map(p => names[p] || p).join(' + ')
+}
+
+function publicSettings() {
+  const s = readSettings()
+  return {
+    quickShortcut: s.quickShortcut || null,
+    toggleShortcut: s.toggleShortcut || null,
+    showTray: !!s.showTray,
+    showDock: !!s.showDock,
+    openAtLogin: app.getLoginItemSettings().openAtLogin,
+    platform: process.platform,
+  }
+}
 
 // ── Vensters ────────────────────────────────────────────────────────────────
 
@@ -149,19 +170,78 @@ function showQuickWindow() {
   quickWindow.webContents.focus()
 }
 
-// ── Sneltoets ───────────────────────────────────────────────────────────────
+// ── Sneltoetsen ─────────────────────────────────────────────────────────────
 
-function registerShortcut(accelerator) {
-  globalShortcut.unregisterAll()
-  const ok = globalShortcut.register(accelerator, showQuickWindow)
-  if (!ok) {
-    dialog.showMessageBox({
-      type: 'warning',
-      message: `De sneltoets ${shortcutLabel(accelerator)} is al in gebruik door een ander programma.`,
-      detail: 'Kies een andere sneltoets via het To-do agent-icoon in de menubalk of taakbalk.',
-    })
+function toggleMainWindow() {
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide()
+    if (IS_MAC && !readSettings().showDock) app.hide()
+  } else {
+    showMainWindow()
   }
-  return ok
+}
+
+/** Registreert beide sneltoetsen. Geeft per sneltoets terug of het lukte. */
+function registerShortcuts(settings = readSettings()) {
+  globalShortcut.unregisterAll()
+  const result = { quick: true, toggle: true }
+  if (settings.quickShortcut) {
+    try { result.quick = globalShortcut.register(settings.quickShortcut, showQuickWindow) } catch { result.quick = false }
+  }
+  if (settings.toggleShortcut) {
+    try { result.toggle = globalShortcut.register(settings.toggleShortcut, toggleMainWindow) } catch { result.toggle = false }
+  }
+  return result
+}
+
+function warnTakenShortcuts(result, settings) {
+  const taken = []
+  if (!result.quick) taken.push(shortcutLabel(settings.quickShortcut))
+  if (!result.toggle) taken.push(shortcutLabel(settings.toggleShortcut))
+  if (!taken.length) return
+  dialog.showMessageBox({
+    type: 'warning',
+    message: `De sneltoets ${taken.join(' en ')} is al in gebruik door een ander programma.`,
+    detail: 'Kies een andere in To-do agent → Instellingen → Desktop.',
+  })
+}
+
+/** Instellingen wijzigen vanuit de pagina. Een bezette sneltoets wordt niet opgeslagen. */
+function applySettings(changes) {
+  const before = readSettings()
+  const next = { ...before }
+  for (const key of ['quickShortcut', 'toggleShortcut']) {
+    if (key in changes) next[key] = changes[key] ? String(changes[key]).slice(0, 60) : null
+  }
+  if ('showTray' in changes) next.showTray = !!changes.showTray
+  if ('showDock' in changes) next.showDock = !!changes.showDock
+
+  if (next.quickShortcut && next.quickShortcut === next.toggleShortcut) {
+    return { ok: false, error: 'Kies twee verschillende sneltoetsen.', settings: publicSettings() }
+  }
+  if (IS_MAC && !next.showTray && !next.showDock) {
+    return { ok: false, error: 'Menubalk en Dock kunnen niet allebei uit, anders is de app niet meer te vinden.', settings: publicSettings() }
+  }
+
+  if ('quickShortcut' in changes || 'toggleShortcut' in changes) {
+    const result = registerShortcuts(next)
+    if (!result.quick || !result.toggle) {
+      registerShortcuts(before)  // terug naar wat werkte
+      const bad = !result.quick ? next.quickShortcut : next.toggleShortcut
+      return { ok: false, error: `${shortcutLabel(bad)} is al in gebruik door een ander programma. Kies een andere.`, settings: publicSettings() }
+    }
+  }
+  writeSettings(next)
+
+  if ('showTray' in changes) setTrayVisible(next.showTray)
+  if ('showDock' in changes && IS_MAC) {
+    if (next.showDock) app.dock.show(); else app.dock.hide()
+  }
+  if ('openAtLogin' in changes) {
+    app.setLoginItemSettings({ openAtLogin: !!changes.openAtLogin, openAsHidden: true })
+  }
+  refreshTray()
+  return { ok: true, settings: publicSettings() }
 }
 
 // ── Menubalk / taakbalk ─────────────────────────────────────────────────────
@@ -175,32 +255,18 @@ function trayIcon() {
   return nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray.png'))
 }
 
+function openSettings() {
+  showMainWindow()
+  mainWindow.webContents.loadURL(`${HUB_URL}/todo/settings#desktop`)
+}
+
 function buildTrayMenu() {
   const settings = readSettings()
-  const loginSettings = app.getLoginItemSettings()
   return Menu.buildFromTemplate([
-    { label: 'Open To-do agent', click: showMainWindow },
-    { label: `Snel toevoegen (${shortcutLabel(settings.shortcut)})`, click: showQuickWindow },
+    { label: `Open To-do agent${settings.toggleShortcut ? ` (${shortcutLabel(settings.toggleShortcut)})` : ''}`, click: showMainWindow },
+    { label: `Snel toevoegen${settings.quickShortcut ? ` (${shortcutLabel(settings.quickShortcut)})` : ''}`, click: showQuickWindow },
     { type: 'separator' },
-    {
-      label: 'Sneltoets',
-      submenu: SHORTCUTS.map(s => ({
-        label: s.label,
-        type: 'radio',
-        checked: settings.shortcut === s.accelerator,
-        click: () => {
-          writeSettings({ shortcut: s.accelerator })
-          registerShortcut(s.accelerator)
-          refreshTray()
-        },
-      })),
-    },
-    {
-      label: 'Starten bij inloggen',
-      type: 'checkbox',
-      checked: loginSettings.openAtLogin,
-      click: (item) => app.setLoginItemSettings({ openAtLogin: item.checked, openAsHidden: true }),
-    },
+    { label: 'Instellingen…', click: openSettings },
     { label: 'Open de hub in de browser', click: () => shell.openExternal(HUB_URL) },
     { type: 'separator' },
     { label: `Versie ${app.getVersion()}`, enabled: false },
@@ -208,10 +274,21 @@ function buildTrayMenu() {
   ])
 }
 
+function setTrayVisible(visible) {
+  if (visible && !tray) {
+    tray = new Tray(trayIcon())
+    tray.on('click', showMainWindow)
+  } else if (!visible && tray) {
+    tray.destroy()
+    tray = null
+  }
+}
+
 function refreshTray() {
   if (!tray) return
+  const s = readSettings()
   tray.setContextMenu(buildTrayMenu())
-  tray.setToolTip(`Eva To-do agent · Snel toevoegen: ${shortcutLabel(readSettings().shortcut)}`)
+  tray.setToolTip(`Eva To-do agent · Snel toevoegen: ${shortcutLabel(s.quickShortcut)}`)
 }
 
 // ── Communicatie met de pagina (preload) ────────────────────────────────────
@@ -227,8 +304,11 @@ ipcMain.on('eva:open-browser', (_event, url) => {
 })
 
 ipcMain.on('eva:info', (event) => {
-  event.returnValue = { shortcut: shortcutLabel(readSettings().shortcut), version: app.getVersion() }
+  event.returnValue = { shortcut: shortcutLabel(readSettings().quickShortcut), version: app.getVersion() }
 })
+
+ipcMain.on('eva:get-settings', (event) => { event.returnValue = publicSettings() })
+ipcMain.handle('eva:set-settings', (_event, changes) => applySettings(changes && typeof changes === 'object' ? changes : {}))
 
 // ── Opstarten ───────────────────────────────────────────────────────────────
 
@@ -245,10 +325,11 @@ if (!app.requestSingleInstanceLock()) {
     createMainWindow()
     createQuickWindow()
 
-    tray = new Tray(trayIcon())
-    tray.on('click', showMainWindow)
+    const settings = readSettings()
+    if (IS_MAC && !settings.showDock && settings.showTray) app.dock.hide()
+    setTrayVisible(settings.showTray || (IS_MAC && !settings.showDock))
     refreshTray()
-    registerShortcut(readSettings().shortcut)
+    warnTakenShortcuts(registerShortcuts(settings), settings)
 
     if (app.isPackaged && process.platform === 'win32') {
       try {
