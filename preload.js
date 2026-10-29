@@ -11,9 +11,11 @@ contextBridge.exposeInMainWorld('evaDesktop', {
   version: info.version,
   // Vanaf 1.1: Instellingen → Desktop in de hub (sneltoetsen, menubalk, Dock, opstarten).
   // Vanaf 1.2 (Mac): venster zonder titelbalk; de hub zet dan zelf een sleepstrook bovenin.
-  capabilities: ['settings', ...(info.frameless ? ['frameless'] : [])],
+  // Vanaf 1.4: snel-toevoegen-venster groeit mee met open keuzelijsten.
+  capabilities: ['settings', 'quick-resize', ...(info.frameless ? ['frameless'] : [])],
   getSettings: () => ipcRenderer.sendSync('eva:get-settings'),
   setSettings: (changes) => ipcRenderer.invoke('eva:set-settings', changes),
+  resizeQuickAdd: (height) => ipcRenderer.send('eva:quick-size', Number(height)),
 })
 
 // Hoofdvenster verversen na snel toevoegen in het kleine venster.

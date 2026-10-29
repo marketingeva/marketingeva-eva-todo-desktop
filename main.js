@@ -135,10 +135,12 @@ function showMainWindow() {
   mainWindow.focus()
 }
 
+const QUICK_SIZE = { width: 640, height: 250, max: 760 }
+
 function createQuickWindow() {
   quickWindow = new BrowserWindow({
-    width: 640,
-    height: 250,
+    width: QUICK_SIZE.width,
+    height: QUICK_SIZE.height,
     frame: false,
     resizable: false,
     movable: true,
@@ -168,8 +170,10 @@ function showQuickWindow() {
   // Midden boven op het scherm waar de muis staat.
   const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
   const { x, y, width, height } = display.workArea
-  const [w] = quickWindow.getSize()
-  quickWindow.setPosition(Math.round(x + (width - w) / 2), Math.round(y + height * 0.18))
+  quickWindow.setBounds({
+    x: Math.round(x + (width - QUICK_SIZE.width) / 2), y: Math.round(y + height * 0.18),
+    width: QUICK_SIZE.width, height: QUICK_SIZE.height,
+  })
   quickWindow.show()
   quickWindow.focus()
   quickWindow.webContents.focus()
@@ -400,6 +404,18 @@ ipcMain.on('eva:close-quick', () => {
   if (quickWindow && !quickWindow.isDestroyed()) quickWindow.hide()
   // Hoofdvenster meteen bijwerken met de nieuwe taak.
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('eva:refresh')
+})
+
+// Keuzelijsten (datum, project, personen) passen niet in het lage venster: de pagina vraagt zolang meer hoogte.
+// Het venster groeit naar beneden en schuift omhoog als het anders onder het scherm uitkomt.
+ipcMain.on('eva:quick-size', (_event, height) => {
+  if (!quickWindow || quickWindow.isDestroyed() || typeof height !== 'number') return
+  const h = Math.round(Math.min(QUICK_SIZE.max, Math.max(QUICK_SIZE.height, height)))
+  const b = quickWindow.getBounds()
+  if (b.height === h) return
+  const area = screen.getDisplayMatching(b).workArea
+  const y = Math.max(area.y, Math.min(b.y, area.y + area.height - h))
+  quickWindow.setBounds({ x: b.x, y, width: b.width, height: h })
 })
 
 ipcMain.on('eva:open-browser', (_event, url) => {
