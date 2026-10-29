@@ -11,7 +11,7 @@ De app laadt de To-do agent rechtstreeks uit de hub. Het is dus precies dezelfde
 - **Icoon in de menubalk (Mac) of taakbalk (Windows)** met: openen, snel toevoegen en instellingen.
 
 ## Bijwerken
-- **Mac:** plak de installatieregel opnieuw in Terminal (zie hieronder). De oude versie wordt overschreven; je blijft ingelogd.
+- **Mac:** werkt zichzelf bij vanaf versie 1.3.0. De app kijkt bij het opstarten en daarna elke 4 uur of er een nieuwe versie is, downloadt die en vraagt of hij mag herstarten. Zelf kijken: icoon in de menubalk → *Zoek naar updates…*. Heb je een oudere versie, plak dan één keer de installatieregel opnieuw in Terminal (zie hieronder); je blijft ingelogd.
 - **Windows:** werkt zichzelf bij; sluit de app en open hem opnieuw.
 - Eigen venster, los van je browser.
 

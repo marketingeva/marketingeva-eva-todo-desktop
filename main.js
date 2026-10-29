@@ -5,11 +5,14 @@
 // een taak die je hier afvinkt is ook in de hub afgevinkt, en andersom.
 // Extra ten opzichte van de browser: sneltoetsen die overal op je computer werken
 // (snel toevoegen en app tonen/verbergen, zelf in te stellen in Instellingen → Desktop)
-// en een icoon in de menubalk/taakbalk.
+// en een icoon in de menubalk/taakbalk. De app werkt zichzelf bij (Mac en Windows).
 
-const { app, BrowserWindow, Tray, Menu, globalShortcut, shell, ipcMain, nativeImage, session, dialog, screen } = require('electron')
+const { app, BrowserWindow, Tray, Menu, globalShortcut, shell, ipcMain, nativeImage, session, dialog, screen, net } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { spawn } = require('child_process')
+const { Readable } = require('stream')
+const { pipeline } = require('stream/promises')
 
 const HUB_URL = (process.env.EVA_HUB_URL || 'https://independent-ambition-production-792a.up.railway.app').replace(/\/$/, '')
 const PARTITION = 'persist:eva'
@@ -272,6 +275,7 @@ function buildTrayMenu() {
     { label: 'Open de hub in de browser', click: () => shell.openExternal(HUB_URL) },
     { type: 'separator' },
     { label: `Versie ${app.getVersion()}`, enabled: false },
+    ...(canSelfUpdate() ? [{ label: 'Zoek naar updates…', click: () => checkForMacUpdate({ manual: true }) }] : []),
     { label: 'Afsluiten', click: () => { quitting = true; app.quit() } },
   ])
 }
@@ -291,6 +295,103 @@ function refreshTray() {
   const s = readSettings()
   tray.setContextMenu(buildTrayMenu())
   tray.setToolTip(`Eva To-do agent · Snel toevoegen: ${shortcutLabel(s.quickShortcut)}`)
+}
+
+// ── Bijwerken (Mac) ─────────────────────────────────────────────────────────
+// Windows werkt bij via electron-updater. Op de Mac kan dat alleen met een Apple-certificaat,
+// en deze app is ad-hoc ondertekend. Daarom hier een eigen variant: de nieuwste release op
+// GitHub opzoeken, de .dmg op de achtergrond downloaden en na akkoord de app vervangen en
+// opnieuw starten (hetzelfde als de installatieregel uit de README).
+
+const RELEASES_API = 'https://api.github.com/repos/marketingeva/marketingeva-eva-todo-desktop/releases/latest'
+const UPDATE_INTERVAL = 4 * 60 * 60 * 1000  // elke 4 uur; GitHub staat 60 verzoeken per uur toe
+let updateBusy = false
+
+/** "1.10.0" > "1.9.2" */
+function isNewer(a, b) {
+  const pa = String(a).replace(/^v/, '').split('.').map(Number)
+  const pb = String(b).replace(/^v/, '').split('.').map(Number)
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0)
+  }
+  return false
+}
+
+/** De geïnstalleerde app, bijv. "/Applications/Eva To-do agent.app". */
+const appBundlePath = () => path.resolve(process.execPath, '..', '..', '..')
+
+/** Alleen de ingepakte Mac-app, en alleen als we de map mogen overschrijven. */
+function canSelfUpdate() {
+  if (!IS_MAC || !app.isPackaged) return false
+  const bundle = appBundlePath()
+  if (!bundle.endsWith('.app') || bundle.includes('/AppTranslocation/')) return false
+  try { fs.accessSync(path.dirname(bundle), fs.constants.W_OK); return true } catch { return false }
+}
+
+async function downloadDmg(url, version) {
+  const file = path.join(app.getPath('temp'), `Eva-To-do-agent-${version}.dmg`)
+  if (fs.existsSync(file)) return file  // eerder gedownload en toen "Later" gekozen
+  const res = await net.fetch(url)
+  if (!res.ok || !res.body) throw new Error(`Download mislukt (${res.status})`)
+  await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(`${file}.part`))
+  fs.renameSync(`${file}.part`, file)
+  return file
+}
+
+/** Sluit de app; een los script wacht tot hij weg is, zet de nieuwe versie neer en start die. */
+function installAndRestart(dmg) {
+  const script = path.join(app.getPath('temp'), 'eva-todo-update.sh')
+  fs.writeFileSync(script, [
+    '#!/bin/bash',
+    '# $1 = dmg, $2 = geïnstalleerde app, $3 = naam van de app in de dmg, $4 = pid van de oude app',
+    'set -e',
+    'trap \'[ -n "$MNT" ] && hdiutil detach "$MNT" -quiet; [ -d "$2" ] && open "$2"\' ERR',
+    'while kill -0 "$4" 2>/dev/null; do sleep 0.5; done',
+    'MNT="$(hdiutil attach -nobrowse -noautoopen "$1" | tail -1 | awk -F\'\\t\' \'{print $NF}\')"',
+    'rm -rf "$2.nieuw"',
+    'cp -R "$MNT/$3" "$2.nieuw"',  // eerst kopiëren: mislukt dat, dan blijft de oude app staan
+    'rm -rf "$2"',
+    'mv "$2.nieuw" "$2"',
+    'hdiutil detach "$MNT" -quiet || true',
+    'xattr -dr com.apple.quarantine "$2" 2>/dev/null || true',
+    'rm -f "$1"',
+    'open "$2"',
+    '',
+  ].join('\n'))
+  const bundle = appBundlePath()
+  spawn('/bin/bash', [script, dmg, bundle, `${app.getName()}.app`, String(process.pid)], { detached: true, stdio: 'ignore' }).unref()
+  quitting = true
+  app.quit()
+}
+
+async function checkForMacUpdate({ manual = false } = {}) {
+  if (updateBusy || !canSelfUpdate()) return
+  updateBusy = true
+  try {
+    const res = await net.fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } })
+    if (!res.ok) throw new Error(`GitHub gaf ${res.status}`)
+    const release = await res.json()
+    const latest = String(release.tag_name || '').replace(/^v/, '')
+    const asset = (release.assets || []).find(a => a.name === 'Eva-To-do-agent.dmg')
+    if (!asset || !isNewer(latest, app.getVersion())) {
+      if (manual) dialog.showMessageBox({ message: `Je hebt de nieuwste versie (${app.getVersion()}).` })
+      return
+    }
+    const dmg = await downloadDmg(asset.browser_download_url, latest)
+    const { response } = await dialog.showMessageBox({
+      type: 'info',
+      message: `Versie ${latest} van de Eva To-do agent staat klaar.`,
+      detail: 'De app sluit even af en start daarna opnieuw. Je blijft ingelogd.',
+      buttons: ['Nu herstarten', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+    })
+    if (response === 0) installAndRestart(dmg)
+  } catch (err) {
+    if (manual) dialog.showMessageBox({ type: 'warning', message: 'Zoeken naar updates lukte niet.', detail: String(err?.message || err) })
+  } finally {
+    updateBusy = false
+  }
 }
 
 // ── Communicatie met de pagina (preload) ────────────────────────────────────
@@ -333,6 +434,10 @@ if (!app.requestSingleInstanceLock()) {
     refreshTray()
     warnTakenShortcuts(registerShortcuts(settings), settings)
 
+    if (canSelfUpdate()) {
+      setTimeout(() => checkForMacUpdate(), 15 * 1000)
+      setInterval(() => checkForMacUpdate(), UPDATE_INTERVAL)
+    }
     if (app.isPackaged && process.platform === 'win32') {
       try {
         const { autoUpdater } = require('electron-updater')
