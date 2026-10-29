@@ -109,6 +109,8 @@ function createMainWindow() {
     backgroundColor: '#121016',
     show: false,
     autoHideMenuBar: true,
+    // Mac: geen grijze titelbalk; de knopjes staan in de pagina, de hub laat er ruimte voor.
+    ...(IS_MAC ? { titleBarStyle: 'hiddenInset' } : {}),
     webPreferences: webPreferences(),
   })
   guardNavigation(mainWindow)
@@ -304,7 +306,7 @@ ipcMain.on('eva:open-browser', (_event, url) => {
 })
 
 ipcMain.on('eva:info', (event) => {
-  event.returnValue = { shortcut: shortcutLabel(readSettings().quickShortcut), version: app.getVersion() }
+  event.returnValue = { shortcut: shortcutLabel(readSettings().quickShortcut), version: app.getVersion(), frameless: IS_MAC }
 })
 
 ipcMain.on('eva:get-settings', (event) => { event.returnValue = publicSettings() })

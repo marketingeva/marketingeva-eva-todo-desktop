@@ -1,7 +1,7 @@
 // Brug tussen de hub-pagina en de desktop-app. De hub leest window.evaDesktop.
 const { contextBridge, ipcRenderer } = require('electron')
 
-let info = { shortcut: undefined, version: undefined }
+let info = { shortcut: undefined, version: undefined, frameless: false }
 try { info = ipcRenderer.sendSync('eva:info') || info } catch { /* niet fataal */ }
 
 contextBridge.exposeInMainWorld('evaDesktop', {
@@ -10,7 +10,8 @@ contextBridge.exposeInMainWorld('evaDesktop', {
   shortcut: info.shortcut,
   version: info.version,
   // Vanaf 1.1: Instellingen → Desktop in de hub (sneltoetsen, menubalk, Dock, opstarten).
-  capabilities: ['settings'],
+  // Vanaf 1.2 (Mac): venster zonder titelbalk; de hub zet dan zelf een sleepstrook bovenin.
+  capabilities: ['settings', ...(info.frameless ? ['frameless'] : [])],
   getSettings: () => ipcRenderer.sendSync('eva:get-settings'),
   setSettings: (changes) => ipcRenderer.invoke('eva:set-settings', changes),
 })
