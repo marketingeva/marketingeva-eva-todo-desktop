@@ -358,6 +358,9 @@ function installAndRestart(dmg) {
     'mv "$2.nieuw" "$2"',
     'hdiutil detach "$MNT" -quiet || true',
     'xattr -dr com.apple.quarantine "$2" 2>/dev/null || true',
+    // macOS bewaart app-iconen in een cache; zonder dit seintje blijft een nieuw icoon onzichtbaar.
+    'touch "$2"',
+    '/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$2" 2>/dev/null || true',
     'rm -f "$1"',
     'open "$2"',
     '',
