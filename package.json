@@ -1,7 +1,7 @@
 {
   "name": "eva-todo-desktop",
   "productName": "Eva To-do agent",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "Desktop-app van de Eva To-do agent, live gekoppeld aan de Eva hub.",
   "main": "main.js",
   "author": "Eva Zorg <marketing@evazorg.nl>",
@@ -42,7 +42,10 @@
       ],
       "category": "public.app-category.productivity",
       "identity": null,
-      "artifactName": "Eva-To-do-agent.${ext}"
+      "artifactName": "Eva-To-do-agent.${ext}",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "De To-do agent gebruikt de microfoon als je taken inspreekt."
+      }
     },
     "dmg": {
       "artifactName": "Eva-To-do-agent.dmg",
